@@ -8,7 +8,7 @@ Based off of https://github.com/toorop/go-bittrex/
 This library is more of a framework for some bots I use so it is expected that a lot of things don't work but pull requests are excepted.
 
 ## Import
-	import "github.com/jyap808/go-poloniex"
+	import "github.com/warbear0129/go-poloniex"
 	
 ## Usage
 ~~~ go
