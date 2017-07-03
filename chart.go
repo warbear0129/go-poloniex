@@ -1,6 +1,6 @@
 package poloniex
 
-type CandleStick struct {
+type Chart struct {
 	Date            PoloniexDate `json:"date"`
 	High            float64      `json:"high"`
 	Low             float64      `json:"low"`

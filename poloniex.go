@@ -3,15 +3,7 @@ package poloniex
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
-	"time"
-)
-
-const (
-	API_BASE                   = "https://poloniex.com/" // Poloniex API endpoint
-	DEFAULT_HTTPCLIENT_TIMEOUT = 30                      // HTTP client timeout
 )
 
 // New return a instantiate poloniex struct
@@ -26,8 +18,8 @@ type Poloniex struct {
 }
 
 // GetTickers is used to get the ticker for all markets
-func (b *Poloniex) GetTickers() (tickers map[string]Ticker, err error) {
-	r, err := b.client.do("GET", "public?command=returnTicker", "", false)
+func (b *Poloniex) ReturnTicker() (tickers map[string]Ticker, err error) {
+	r, err := b.client.do("GET", "returnTicker", nil)
 	if err != nil {
 		return
 	}
@@ -38,8 +30,8 @@ func (b *Poloniex) GetTickers() (tickers map[string]Ticker, err error) {
 }
 
 // GetVolumes is used to get the volume for all markets
-func (b *Poloniex) GetVolumes() (vc VolumeCollection, err error) {
-	r, err := b.client.do("GET", "public?command=return24hVolume", "", false)
+func (b *Poloniex) Return24Volume() (vc VolumeCollection, err error) {
+	r, err := b.client.do("GET", "return24hVolume", nil)
 	if err != nil {
 		return
 	}
@@ -50,7 +42,7 @@ func (b *Poloniex) GetVolumes() (vc VolumeCollection, err error) {
 }
 
 func (b *Poloniex) GetCurrencies() (currencies Currencies, err error) {
-	r, err := b.client.do("GET", "public?command=returnCurrencies", "", false)
+	r, err := b.client.do("GET", "returnCurrencies", nil)
 	if err != nil {
 		return
 	}
@@ -64,11 +56,7 @@ func (b *Poloniex) GetCurrencies() (currencies Currencies, err error) {
 // market: a string literal for the market (ex: BTC_NXT). 'all' not implemented.
 // cat: bid, ask or both to identify the type of orderbook to return.
 // depth: how deep of an order book to retrieve
-func (b *Poloniex) GetOrderBook(market, cat string, depth int) (orderBook OrderBook, err error) {
-	// not implemented
-	if cat != "bid" && cat != "ask" && cat != "both" {
-		cat = "both"
-	}
+func (b *Poloniex) ReturnOrderBook(currencyPair string, depth int) (orderBook OrderBook, err error) {
 	if depth > 100 {
 		depth = 100
 	}
@@ -76,17 +64,18 @@ func (b *Poloniex) GetOrderBook(market, cat string, depth int) (orderBook OrderB
 		depth = 1
 	}
 
-	r, err := b.client.do("GET", fmt.Sprintf("public?command=returnOrderBook&currencyPair=%s&depth=%d", strings.ToUpper(market), depth), "", false)
+	args := map[string]string{
+		"currencyPair": currencyPair,
+		"depth":        fmt.Sprintf("%v", depth)}
+
+	r, err := b.client.do("GET", "returnOrderBook", args)
 	if err != nil {
 		return
 	}
 	if err = json.Unmarshal(r, &orderBook); err != nil {
 		return
 	}
-	if orderBook.Error != "" {
-		err = errors.New(orderBook.Error)
-		return
-	}
+
 	return
 }
 
@@ -95,19 +84,79 @@ func (b *Poloniex) GetOrderBook(market, cat string, depth int) (orderBook OrderB
 // 7200, 14400, and 86400), "start", and "end". "Start" and "end" are given in
 // UNIX timestamp format and used to specify the date range for the data
 // returned.
-func (b *Poloniex) ChartData(currencyPair string, period int, start, end time.Time) (candles []*CandleStick, err error) {
-	r, err := b.client.do("GET", fmt.Sprintf(
-		"/public?command=returnChartData&currencyPair=%s&period=%d&start=%d&end=%d",
-		strings.ToUpper(currencyPair),
-		period,
-		start.Unix(),
-		end.Unix(),
-	), "", false)
+func (b *Poloniex) ReturnChartData(currencyPair string, start, end, period int) (chart []Chart, err error) {
+	args := map[string]string{
+		"currencyPair": currencyPair,
+		"start":        fmt.Sprintf("%v", start),
+		"end":          fmt.Sprintf("%v", end),
+		"period":       fmt.Sprintf("%v", period)}
+
+	r, err := b.client.do("GET", "returnChartData", args)
 	if err != nil {
 		return
 	}
 
-	if err = json.Unmarshal(r, &candles); err != nil {
+	if err = json.Unmarshal(r, &chart); err != nil {
+		return
+	}
+
+	return
+}
+
+func (b *Poloniex) ReturnLoanOrders(currency string) (loans Loan, err error) {
+	args := map[string]string{
+		"currency": currency}
+
+	r, err := b.client.do("GET", "returnLoanOrders", args)
+	if err != nil {
+		return
+	}
+
+	if err = json.Unmarshal(r, &loans); err != nil {
+		return
+	}
+
+	return
+}
+
+func (b *Poloniex) ReturnTradeHistory(currencyPair string, start, end int) (trades []*Trade, err error) {
+	args := map[string]string{
+		"currencyPair": currencyPair,
+		"start":        fmt.Sprintf("%v", start),
+		"end":          fmt.Sprintf("%v", end)}
+
+	r, err := b.client.do("GET", "returnTradeHistory", args)
+	if err != nil {
+		return
+	}
+
+	if err = json.Unmarshal(r, &trades); err != nil {
+		return
+	}
+
+	return
+}
+
+func (b *Poloniex) ReturnBalances() (balances []Balance, err error) {
+	r, err := b.client.do("POST", "returnBalances", nil)
+	if err != nil {
+		return
+	}
+
+	if err = json.Unmarshal(r, &balances); err != nil {
+		return
+	}
+
+	return
+}
+
+func (b *Poloniex) ReturnCompleteBalances() (completeBalances []CompleteBalance, err error) {
+	r, err := b.client.do("POST", "returnCompleteBalances", nil)
+	if err != nil {
+		return
+	}
+
+	if err = json.Unmarshal(r, &completeBalances); err != nil {
 		return
 	}
 
